@@ -60,16 +60,16 @@ char **tokenizer(char *input, int *num_commands){
 
   //allocate memory for "tokens"
   tokens = calloc(1, sizeof(char *));
-  token = strtok(input, " \n\t");  
+  token = strtok(input, "&\r");  
 
   //begin tokenizing the command line
   while (token != NULL){
-    //(*num_commands)++; //increment command count 
+    (*num_commands)++; //increment command count 
     tokens[position] = token; //save token into array of pointers
     position++; //increment the position in the array of pointers
     //allocate enough memory for the next token
     tokens = realloc(tokens, sizeof(char *) * (position + 1));
-    token = strtok(NULL, " \t\n"); //pass NULL to advance to the next token
+    token = strtok(NULL, "&\r"); //pass NULL to advance to the next token
   }
 
   tokens[position] = NULL; //set final element to NULL to terminate the array
@@ -80,19 +80,37 @@ char **tokenizer(char *input, int *num_commands){
 //execute function
 int execute(char** tokens, int num_commands){
   int i;
-  // for(i = 0; i < num_commands; i++){
+  int position = 0;
+  char *token2;
+  char **tokens2;
+
+  for(i = 0; i < num_commands; i++){
     int pid = fork(); //call fork to create new process
+
     if (pid < 0){
       write(STDERR_FILENO, error_message, strlen(error_message));
       exit(1);
-    }else if (pid ==0){ //now inside child process
-      if((execvp(tokens[0], tokens)) == -1){ //use execvp to execute command
+    }else if (pid == 0){ //now inside child process
+      tokens2 = calloc(1, sizeof(char *));
+      token2 = strtok(tokens[i], " \t\n");
+      while (token2 != NULL){
+	tokens2[position] = token2;
+	position++;
+	tokens2 = realloc(tokens2, sizeof(char *) * (position + 1));
+	token2 = strtok(NULL, " \t\n");
+      }
+      tokens2[position] = NULL;
+      if((execvp(tokens2[0], tokens2)) == -1){ //use execvp to execute command
 	write(STDERR_FILENO, error_message, strlen(error_message));
       }
-    }else {//now inside parent process
-      wait(NULL); //wait for child process to finish
-    }
-    // }
+     }
+  }
+
+  for (i = 0; i < num_commands; i++){
+    wait(NULL); //wait for child process to finish
+    free(tokens2); //free tokens2 after child finishes
+  }
+  
   return 1;
 }
     
